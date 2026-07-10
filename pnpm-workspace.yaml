@@ -1,0 +1,6 @@
+allowBuilds:
+  "@ffmpeg-installer/linux-x64": true
+  esbuild: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true
