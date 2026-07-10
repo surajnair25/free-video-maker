@@ -38,6 +38,9 @@ export class Config {
   public packageDirPath: string;
   public musicDirPath: string;
   public pexelsApiKey: string;
+  public mediaProvider: "pexels" | "pollinations";
+  public pollinationsApiKey?: string;
+  public pollinationsStylePrompt: string;
   public logLevel: pino.Level;
   public whisperVerbose: boolean;
   public port: number;
@@ -75,6 +78,11 @@ export class Config {
     this.musicDirPath = path.join(this.staticDirPath, "music");
 
     this.pexelsApiKey = process.env.PEXELS_API_KEY as string;
+    this.mediaProvider = (process.env.MEDIA_PROVIDER as "pexels" | "pollinations") || "pexels";
+    this.pollinationsApiKey = process.env.POLLINATIONS_API_KEY || undefined;
+    this.pollinationsStylePrompt =
+      process.env.POLLINATIONS_STYLE_PROMPT ||
+      "hand-drawn 2D doodle animation style, flat colors, bold black outlines, no photorealism, simple children's illustration style";
     this.logLevel = (process.env.LOG_LEVEL || defaultLogLevel) as pino.Level;
     this.whisperVerbose = process.env.WHISPER_VERBOSE === "true";
     this.port = process.env.PORT ? parseInt(process.env.PORT) : defaultPort;
@@ -101,9 +109,9 @@ export class Config {
   }
 
   public ensureConfig() {
-    if (!this.pexelsApiKey) {
+    if (this.mediaProvider === "pexels" && !this.pexelsApiKey) {
       throw new Error(
-        "PEXELS_API_KEY environment variable is missing. Get your free API key: https://www.pexels.com/api/key/ - see how to run the project: https://github.com/gyoridavid/short-video-maker",
+        "PEXELS_API_KEY environment variable is missing. Get your free API key: https://www.pexels.com/api/key/ - see how to run the project: https://github.com/gyoridavid/short-video-maker. Alternatively, set MEDIA_PROVIDER=pollinations to use free AI-generated images instead (no key required).",
       );
     }
   }

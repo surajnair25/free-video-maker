@@ -11,6 +11,7 @@ import { Remotion } from "./libraries/Remotion";
 import { Whisper } from "./libraries/Whisper";
 import { FFMpeg } from "./libraries/FFmpeg";
 import { PexelsAPI } from "./libraries/Pexels";
+import { PollinationsAPI } from "./libraries/Pollinations";
 import { Config } from "../config";
 import { logger } from "../logger";
 import { MusicManager } from "./music";
@@ -22,6 +23,7 @@ import type {
   MusicMoodEnum,
   MusicTag,
   MusicForVideo,
+  Video,
 } from "../types/shorts";
 
 export class ShortCreator {
@@ -36,7 +38,7 @@ export class ShortCreator {
     private kokoro: Kokoro,
     private whisper: Whisper,
     private ffmpeg: FFMpeg,
-    private pexelsApi: PexelsAPI,
+    private pexelsApi: PexelsAPI | PollinationsAPI,
     private musicManager: MusicManager,
   ) {}
 
@@ -137,40 +139,48 @@ export class ShortCreator {
       const captions = await this.whisper.CreateCaption(tempWavPath);
 
       await this.ffmpeg.saveToMp3(audioStream, tempMp3Path);
-      const video = await this.pexelsApi.findVideo(
+      const video: Video = await this.pexelsApi.findVideo(
         scene.searchTerms,
         audioLength,
         excludeVideoIds,
         orientation,
       );
 
-      logger.debug(`Downloading video from ${video.url} to ${tempVideoPath}`);
+      logger.debug(`Getting video for ${tempVideoPath} from ${video.url}`);
 
-      await new Promise<void>((resolve, reject) => {
-        const fileStream = fs.createWriteStream(tempVideoPath);
-        https
-          .get(video.url, (response: http.IncomingMessage) => {
-            if (response.statusCode !== 200) {
-              reject(
-                new Error(`Failed to download video: ${response.statusCode}`),
-              );
-              return;
-            }
+      if (video.url.startsWith("file://")) {
+        const sourcePath = video.url.replace("file://", "");
+        await fs.move(sourcePath, tempVideoPath, { overwrite: true });
+        logger.debug(`Moved locally generated clip to ${tempVideoPath}`);
+      } else {
+        logger.debug(`Downloading video from ${video.url} to ${tempVideoPath}`);
 
-            response.pipe(fileStream);
+        await new Promise<void>((resolve, reject) => {
+          const fileStream = fs.createWriteStream(tempVideoPath);
+          https
+            .get(video.url, (response: http.IncomingMessage) => {
+              if (response.statusCode !== 200) {
+                reject(
+                  new Error(`Failed to download video: ${response.statusCode}`),
+                );
+                return;
+              }
 
-            fileStream.on("finish", () => {
-              fileStream.close();
-              logger.debug(`Video downloaded successfully to ${tempVideoPath}`);
-              resolve();
+              response.pipe(fileStream);
+
+              fileStream.on("finish", () => {
+                fileStream.close();
+                logger.debug(`Video downloaded successfully to ${tempVideoPath}`);
+                resolve();
+              });
+            })
+            .on("error", (err: Error) => {
+              fs.unlink(tempVideoPath, () => {}); // Delete the file if download failed
+              logger.error(err, "Error downloading video:");
+              reject(err);
             });
-          })
-          .on("error", (err: Error) => {
-            fs.unlink(tempVideoPath, () => {}); // Delete the file if download failed
-            logger.error(err, "Error downloading video:");
-            reject(err);
-          });
-      });
+        });
+      }
 
       excludeVideoIds.push(video.id);
 
