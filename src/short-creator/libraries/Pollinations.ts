@@ -104,8 +104,16 @@ export class PollinationsAPI {
     // tokens more heavily, so leading with style keeps every scene visually
     // consistent instead of drifting toward semi-realistic renders.
     const fullPrompt = this.stylePrompt
-      ? `${this.stylePrompt}, ${prompt}, single clean composition, exactly one of each object in the scene, simple relaxed hands not in extreme close-up, no duplicate items, no extra limbs, no distorted fingers, no readable text or writing anywhere in the image, blank signs and papers`
+      ? `${this.stylePrompt}, ${prompt}, single clean composition, exactly one of each object in the scene, simple relaxed hands not in extreme close-up`
       : prompt;
+    // Dedicated negative_prompt field — more reliable than cramming
+    // exclusions into the main prompt text, since it's a field the model is
+    // specifically trained to treat as "avoid this." Note: this measurably
+    // helps hands and garbled in-image text, but does NOT reliably prevent
+    // duplicate background objects (e.g. two clocks) — that remains a
+    // probabilistic tendency of the free model regardless of prompting.
+    const negativePrompt =
+      "duplicate objects, multiple identical items, extra limbs, distorted fingers, malformed hands, readable text, writing, letters, words, gibberish text, blurry, photorealistic, distorted anatomy";
     // image.pollinations.ai is Pollinations' longstanding no-signup, no-API-key
     // image endpoint. An optional key can be supplied for higher rate limits.
     const seed = Math.floor(Math.random() * 1_000_000);
@@ -117,6 +125,10 @@ export class PollinationsAPI {
       height: String(height),
       nologo: "true",
       seed: String(seed),
+      enhance: "true", // lets Pollinations' own text model rewrite our prompt
+      // into a more coherent, better-composed description before generation —
+      // free, since it's still the flux image model underneath.
+      negative_prompt: negativePrompt,
     });
     if (this.apiKey) {
       params.set("key", this.apiKey);
