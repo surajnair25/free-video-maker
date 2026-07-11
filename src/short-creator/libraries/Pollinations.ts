@@ -7,7 +7,7 @@ import { getOrientationConfig } from "../../components/utils";
 import { logger } from "../../logger";
 import { OrientationEnum, type Video } from "../../types/shorts";
 
-const defaultTimeoutMs = 30000;
+const defaultTimeoutMs = 90000;
 const retryTimes = 3;
 // Minimum gap enforced between EVERY Pollinations request (successes included),
 // since generating 10 scenes back-to-back can trip the API's rate limit even
