@@ -9,6 +9,11 @@ import { OrientationEnum, type Video } from "../../types/shorts";
 
 const defaultTimeoutMs = 30000;
 const retryTimes = 3;
+// Minimum gap enforced between EVERY Pollinations request (successes included),
+// since generating 10 scenes back-to-back can trip the API's rate limit even
+// when each individual request eventually succeeds. Shared across all
+// instances via a static so it holds even across concurrent scene renders.
+const minRequestIntervalMs = 6000;
 
 // A handful of gentle pan/zoom moves so consecutive scenes don't all look identical.
 type KenBurnsMove = {
@@ -28,11 +33,33 @@ const kenBurnsMoves: KenBurnsMove[] = [
 ];
 
 export class PollinationsAPI {
+  // Static so the throttle is shared across every scene/instance in a run,
+  // not reset per-scene — that's what actually prevents the burst of 10
+  // back-to-back requests from tripping the rate limit.
+  private static lastRequestTime = 0;
+  private static throttleChain: Promise<void> = Promise.resolve();
+
   constructor(
     private stylePrompt: string,
     private apiKey?: string,
     private tempDirPath: string = "/tmp",
   ) {}
+
+  // Queues callers so requests are issued strictly one at a time, each
+  // waiting out the remaining gap since the previous request actually fired.
+  private async throttle(): Promise<void> {
+    const runThrottle = async () => {
+      const elapsed = Date.now() - PollinationsAPI.lastRequestTime;
+      const waitTime = minRequestIntervalMs - elapsed;
+      if (waitTime > 0) {
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+      PollinationsAPI.lastRequestTime = Date.now();
+    };
+    const next = PollinationsAPI.throttleChain.then(runThrottle);
+    PollinationsAPI.throttleChain = next.catch(() => {});
+    return next;
+  }
 
   private buildImageUrl(prompt: string, width: number, height: number): string {
     const fullPrompt = this.stylePrompt
@@ -54,6 +81,7 @@ export class PollinationsAPI {
   }
 
   private async downloadImage(url: string, destPath: string, timeout: number): Promise<void> {
+    await this.throttle();
     const response = await fetch(url, {
       method: "GET",
       redirect: "follow",
@@ -171,7 +199,7 @@ export class PollinationsAPI {
         // Back off for real instead of hammering the API immediately —
         // 429s especially need real breathing room, not a retry a second later.
         const backoffMs = isRateLimit
-          ? 5000 * Math.pow(2, retryCounter) // 5s, 10s, 20s for rate limits
+          ? 10000 * Math.pow(2, retryCounter) // 10s, 20s, 40s for rate limits
           : 1000 * Math.pow(2, retryCounter); // 1s, 2s, 4s for other errors
         logger.warn(
           { searchTerm, retryCounter, isRateLimit, backoffMs },
