@@ -104,7 +104,7 @@ export class PollinationsAPI {
     // tokens more heavily, so leading with style keeps every scene visually
     // consistent instead of drifting toward semi-realistic renders.
     const fullPrompt = this.stylePrompt
-      ? `${this.stylePrompt}, ${prompt}, single clean composition, no duplicate objects, no extra limbs`
+      ? `${this.stylePrompt}, ${prompt}, single clean composition, exactly one of each object in the scene, simple relaxed hands not in extreme close-up, no duplicate items, no extra limbs, no distorted fingers`
       : prompt;
     // image.pollinations.ai is Pollinations' longstanding no-signup, no-API-key
     // image endpoint. An optional key can be supplied for higher rate limits.
