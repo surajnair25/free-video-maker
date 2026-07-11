@@ -26,11 +26,49 @@ type KenBurnsMove = {
 };
 
 const kenBurnsMoves: KenBurnsMove[] = [
+  // Straight zoom-in, centered
   { zoomStart: 1.0, zoomEnd: 1.15, xStart: 0.5, xEnd: 0.5, yStart: 0.5, yEnd: 0.45 },
+  // Straight zoom-out, centered
   { zoomStart: 1.15, zoomEnd: 1.0, xStart: 0.45, xEnd: 0.55, yStart: 0.5, yEnd: 0.5 },
+  // Gentle zoom-in with slight vertical drift
   { zoomStart: 1.0, zoomEnd: 1.12, xStart: 0.4, xEnd: 0.5, yStart: 0.5, yEnd: 0.5 },
+  // Gentle zoom-out with slight vertical drift
   { zoomStart: 1.12, zoomEnd: 1.0, xStart: 0.5, xEnd: 0.5, yStart: 0.4, yEnd: 0.5 },
+  // Pan left-to-right, no zoom change
+  { zoomStart: 1.1, zoomEnd: 1.1, xStart: 0.3, xEnd: 0.7, yStart: 0.5, yEnd: 0.5 },
+  // Pan right-to-left, no zoom change
+  { zoomStart: 1.1, zoomEnd: 1.1, xStart: 0.7, xEnd: 0.3, yStart: 0.5, yEnd: 0.5 },
+  // Diagonal: top-left to bottom-right, zooming in
+  { zoomStart: 1.0, zoomEnd: 1.18, xStart: 0.3, xEnd: 0.6, yStart: 0.3, yEnd: 0.6 },
+  // Diagonal: bottom-right to top-left, zooming in
+  { zoomStart: 1.0, zoomEnd: 1.18, xStart: 0.7, xEnd: 0.4, yStart: 0.7, yEnd: 0.4 },
+  // Corner push-in: top-right corner toward center
+  { zoomStart: 1.05, zoomEnd: 1.2, xStart: 0.75, xEnd: 0.5, yStart: 0.25, yEnd: 0.45 },
+  // Corner push-in: bottom-left corner toward center
+  { zoomStart: 1.05, zoomEnd: 1.2, xStart: 0.25, xEnd: 0.5, yStart: 0.75, yEnd: 0.55 },
+  // Slow, subtle zoom-in (for calmer/quieter beats)
+  { zoomStart: 1.0, zoomEnd: 1.08, xStart: 0.5, xEnd: 0.5, yStart: 0.5, yEnd: 0.5 },
+  // Fast, dramatic zoom-in (for punchline/reveal beats)
+  { zoomStart: 1.0, zoomEnd: 1.25, xStart: 0.5, xEnd: 0.5, yStart: 0.5, yEnd: 0.4 },
+  // Vertical pan upward, mild zoom
+  { zoomStart: 1.08, zoomEnd: 1.15, xStart: 0.5, xEnd: 0.5, yStart: 0.7, yEnd: 0.3 },
+  // Vertical pan downward, mild zoom
+  { zoomStart: 1.08, zoomEnd: 1.15, xStart: 0.5, xEnd: 0.5, yStart: 0.3, yEnd: 0.7 },
 ];
+
+// Tracks the last move index per-process so consecutive scenes in the same
+// video don't repeat the same pan/zoom pattern back to back.
+let lastMoveIndex = -1;
+function pickKenBurnsMove(): KenBurnsMove {
+  let index = Math.floor(Math.random() * kenBurnsMoves.length);
+  if (kenBurnsMoves.length > 1) {
+    while (index === lastMoveIndex) {
+      index = Math.floor(Math.random() * kenBurnsMoves.length);
+    }
+  }
+  lastMoveIndex = index;
+  return kenBurnsMoves[index];
+}
 
 export class PollinationsAPI {
   // Static so the throttle is shared across every scene/instance in a run,
@@ -107,7 +145,7 @@ export class PollinationsAPI {
     width: number,
     height: number,
   ): Promise<void> {
-    const move = kenBurnsMoves[Math.floor(Math.random() * kenBurnsMoves.length)];
+    const move = pickKenBurnsMove();
     const fps = 25;
     const totalFrames = Math.ceil(durationSeconds * fps);
     // Oversample generously so zoompan has real pixels to pan across without
