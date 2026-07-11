@@ -76,9 +76,10 @@ export class PollinationsAPI {
     const move = kenBurnsMoves[Math.floor(Math.random() * kenBurnsMoves.length)];
     const fps = 25;
     const totalFrames = Math.ceil(durationSeconds * fps);
-    // Oversample so the zoompan filter has room to pan/zoom without revealing edges.
-    const scaleW = width * 1.5;
-    const scaleH = height * 1.5;
+    // Oversample generously so zoompan has real pixels to pan across without
+    // revealing edges or looking blocky as it zooms in.
+    const scaleW = Math.round(width * 2.5);
+    const scaleH = Math.round(height * 2.5);
 
     const zoomExpr = `'${move.zoomStart}+(${move.zoomEnd}-${move.zoomStart})*on/${totalFrames}'`;
     const xExpr = `'(iw-iw/zoom)*${move.xStart}+((iw-iw/zoom)*${move.xEnd}-(iw-iw/zoom)*${move.xStart})*on/${totalFrames}'`;
@@ -87,10 +88,16 @@ export class PollinationsAPI {
     await new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(imagePath)
-        .inputOptions(["-loop", "1"])
+        // -framerate is required alongside -loop 1: without it, ffmpeg only
+        // feeds zoompan a single still frame instead of a continuous stream,
+        // so the pan/zoom never actually animates (looks like a frozen image).
+        .inputOptions(["-loop", "1", "-framerate", String(fps)])
         .complexFilter([
           `scale=${scaleW}:${scaleH}:force_original_aspect_ratio=increase,crop=${scaleW}:${scaleH}`,
           `zoompan=z=${zoomExpr}:x=${xExpr}:y=${yExpr}:d=${totalFrames}:s=${width}x${height}:fps=${fps}`,
+          // Re-normalizes timing after zoompan, which otherwise can produce
+          // slightly uneven frame pacing when fed from a looped still image.
+          `framerate=fps=${fps}`,
         ].join(","))
         .outputOptions([
           "-t",
@@ -151,15 +158,26 @@ export class PollinationsAPI {
     timeout: number = defaultTimeoutMs,
     retryCounter: number = 0,
   ): Promise<Video> {
-    const searchTerm = searchTerms[0] || "abstract background";
+    // Join all terms into one descriptive prompt — an AI image model needs a
+    // coherent scene description, not an isolated keyword the way a stock
+    // footage search does.
+    const searchTerm = searchTerms.length > 0 ? searchTerms.join(", ") : "abstract background";
     try {
       return await this._findVideo(searchTerm, minDurationSeconds, orientation, timeout);
     } catch (error: unknown) {
+      const isRateLimit =
+        error instanceof Error && error.message.includes("429");
       if (retryCounter < retryTimes) {
+        // Back off for real instead of hammering the API immediately —
+        // 429s especially need real breathing room, not a retry a second later.
+        const backoffMs = isRateLimit
+          ? 5000 * Math.pow(2, retryCounter) // 5s, 10s, 20s for rate limits
+          : 1000 * Math.pow(2, retryCounter); // 1s, 2s, 4s for other errors
         logger.warn(
-          { searchTerm, retryCounter },
-          "Pollinations generation failed, retrying...",
+          { searchTerm, retryCounter, isRateLimit, backoffMs },
+          "Pollinations generation failed, retrying after backoff...",
         );
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
         return await this.findVideo(
           searchTerms,
           minDurationSeconds,
