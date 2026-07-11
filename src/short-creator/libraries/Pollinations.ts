@@ -62,13 +62,19 @@ export class PollinationsAPI {
   }
 
   private buildImageUrl(prompt: string, width: number, height: number): string {
+    // Style descriptors go first — diffusion models generally weight earlier
+    // tokens more heavily, so leading with style keeps every scene visually
+    // consistent instead of drifting toward semi-realistic renders.
     const fullPrompt = this.stylePrompt
-      ? `${prompt}, ${this.stylePrompt}`
+      ? `${this.stylePrompt}, ${prompt}, single clean composition, no duplicate objects, no extra limbs`
       : prompt;
     // image.pollinations.ai is Pollinations' longstanding no-signup, no-API-key
     // image endpoint. An optional key can be supplied for higher rate limits.
     const seed = Math.floor(Math.random() * 1_000_000);
     const params = new URLSearchParams({
+      model: "flux", // explicit — Pollinations' default model has changed over
+      // time and newer defaults render more photorealistic / less consistent
+      // results. Flux is free, unlimited, and follows style prompts reliably.
       width: String(width),
       height: String(height),
       nologo: "true",

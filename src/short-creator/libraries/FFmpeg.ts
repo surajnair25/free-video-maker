@@ -1,4 +1,5 @@
 import ffmpeg from "fluent-ffmpeg";
+import fs from "fs-extra";
 import { Readable } from "node:stream";
 import { logger } from "../../logger";
 
@@ -89,5 +90,32 @@ export class FFMpeg {
           reject(err);
         });
     });
+  }
+
+  // Normalizes the final rendered video's audio to a standard loudness
+  // target. Remotion's <Audio volume={}> prop is a simple linear multiplier,
+  // so if the underlying music files are mastered quietly, even "high" volume
+  // settings can end up barely audible. This brings the whole mix (voice +
+  // music) up to a consistent, properly audible level regardless of how
+  // quiet the source assets are, without touching the video stream at all.
+  async normalizeAudioLoudness(videoPath: string): Promise<void> {
+    const tempOutputPath = `${videoPath}.normalized.mp4`;
+    logger.debug({ videoPath }, "Normalizing final audio loudness");
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input(videoPath)
+        .videoCodec("copy")
+        .audioFilters("loudnorm=I=-14:TP=-1.5:LRA=11")
+        .audioCodec("aac")
+        .audioBitrate("192k")
+        .outputOptions(["-movflags", "+faststart"])
+        .save(tempOutputPath)
+        .on("end", () => resolve())
+        .on("error", (err: unknown) => reject(err));
+    });
+
+    await fs.rename(tempOutputPath, videoPath);
+    logger.debug({ videoPath }, "Audio loudness normalization complete");
   }
 }

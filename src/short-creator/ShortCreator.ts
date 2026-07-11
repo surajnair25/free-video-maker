@@ -221,6 +221,16 @@ export class ShortCreator {
       orientation,
     );
 
+    // The music files bundled with this project are mastered quietly, so the
+    // musicVolume config's linear multiplier alone often isn't enough to make
+    // the music actually audible. Normalize the final mix to a consistent,
+    // properly audible loudness target regardless of source volume.
+    try {
+      await this.ffmpeg.normalizeAudioLoudness(this.getVideoPath(videoId));
+    } catch (error: unknown) {
+      logger.error(error, "Error normalizing final audio loudness, keeping unnormalized output");
+    }
+
     for (const file of tempFiles) {
       fs.removeSync(file);
     }
