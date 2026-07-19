@@ -8,7 +8,7 @@ import { logger } from "../../logger";
 import { OrientationEnum, type Video } from "../../types/shorts";
 
 const defaultTimeoutMs = 90000;
-const retryTimes = 3;
+const retryTimes = 5;
 // Minimum gap enforced between EVERY Pollinations request (successes included),
 // since generating 10 scenes back-to-back can trip the API's rate limit even
 // when each individual request eventually succeeds. Shared across all
@@ -125,9 +125,11 @@ export class PollinationsAPI {
       height: String(height),
       nologo: "true",
       seed: String(seed),
-      enhance: "true", // lets Pollinations' own text model rewrite our prompt
-      // into a more coherent, better-composed description before generation —
-      // free, since it's still the flux image model underneath.
+      // NOTE: deliberately NOT setting enhance=true. Confirmed via direct
+      // testing that it causes Pollinations to return an immediate 500
+      // (not a timeout/overload — fails in <1s), independent of prompt
+      // content or rate limiting. Our own prompts are already detailed
+      // enough that the extra server-side rewrite isn't needed.
       negative_prompt: negativePrompt,
     });
     if (this.apiKey) {
@@ -249,14 +251,20 @@ export class PollinationsAPI {
     try {
       return await this._findVideo(searchTerm, minDurationSeconds, orientation, timeout);
     } catch (error: unknown) {
+      // Pollinations' free tier often returns a bare 500 instead of a
+      // proper 429 when it's overloaded/rate-limiting us — so a plain
+      // "Internal Server Error" gets treated the same as a rate limit
+      // for backoff purposes, not retried on a short timer.
       const isRateLimit =
-        error instanceof Error && error.message.includes("429");
+        error instanceof Error &&
+        (error.message.includes("429") || error.message.includes("500"));
       if (retryCounter < retryTimes) {
-        // Back off for real instead of hammering the API immediately —
-        // 429s especially need real breathing room, not a retry a second later.
+        // Real breathing room instead of hammering the API immediately,
+        // plus jitter so concurrent scene requests don't retry in lockstep.
+        const jitter = Math.floor(Math.random() * 1000);
         const backoffMs = isRateLimit
-          ? 10000 * Math.pow(2, retryCounter) // 10s, 20s, 40s for rate limits
-          : 1000 * Math.pow(2, retryCounter); // 1s, 2s, 4s for other errors
+          ? 15000 * Math.pow(2, retryCounter) + jitter // 15s, 30s, 60s, 120s, 240s
+          : 5000 * Math.pow(2, retryCounter) + jitter; // 5s, 10s, 20s, 40s, 80s
         logger.warn(
           { searchTerm, retryCounter, isRateLimit, backoffMs },
           "Pollinations generation failed, retrying after backoff...",
