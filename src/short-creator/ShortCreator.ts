@@ -12,6 +12,7 @@ import { Whisper } from "./libraries/Whisper";
 import { FFMpeg } from "./libraries/FFmpeg";
 import { PexelsAPI } from "./libraries/Pexels";
 import { PollinationsAPI } from "./libraries/Pollinations";
+import { CloudflareAPI } from "./libraries/CloudflareAPI";
 import { Config } from "../config";
 import { logger } from "../logger";
 import { MusicManager } from "./music";
@@ -38,7 +39,7 @@ export class ShortCreator {
     private kokoro: Kokoro,
     private whisper: Whisper,
     private ffmpeg: FFMpeg,
-    private pexelsApi: PexelsAPI | PollinationsAPI,
+    private pexelsApi: PexelsAPI | PollinationsAPI | CloudflareAPI,
     private musicManager: MusicManager,
   ) {}
 

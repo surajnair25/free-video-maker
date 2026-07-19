@@ -8,6 +8,7 @@ import { Whisper } from "./short-creator/libraries/Whisper";
 import { FFMpeg } from "./short-creator/libraries/FFmpeg";
 import { PexelsAPI } from "./short-creator/libraries/Pexels";
 import { PollinationsAPI } from "./short-creator/libraries/Pollinations";
+import { CloudflareAPI } from "./short-creator/libraries/CloudflareAPI";
 import { Config } from "./config";
 import { ShortCreator } from "./short-creator/ShortCreator";
 import { logger } from "./logger";
@@ -47,7 +48,14 @@ async function main() {
           config.pollinationsApiKey,
           config.tempDirPath,
         )
-      : new PexelsAPI(config.pexelsApiKey);
+      : config.mediaProvider === "cloudflare"
+        ? new CloudflareAPI(
+            config.pollinationsStylePrompt,
+            config.cloudflareAccountId as string,
+            config.cloudflareApiToken as string,
+            config.tempDirPath,
+          )
+        : new PexelsAPI(config.pexelsApiKey);
   logger.debug({ provider: config.mediaProvider }, "Using media provider");
 
   logger.debug("initializing the short creator");
