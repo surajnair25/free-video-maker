@@ -51,6 +51,14 @@ export class Remotion {
 
     await renderMedia({
       codec: "h264",
+      // No CUDA/GPU acceleration available on this hardware — everything
+      // encodes in software regardless of Dockerfile. "ultrafast" trades a
+      // bit of file-size efficiency for real encode speed, which is a good
+      // trade for social Shorts (nobody's compression-auditing a 50MB
+      // vertical video). Default preset (roughly "medium") is noticeably
+      // slower on CPU-only hardware for no real visual benefit at this
+      // output size/bitrate.
+      x264Preset: "ultrafast",
       composition,
       serveUrl: this.bundled,
       outputLocation,
@@ -81,6 +89,7 @@ export class Remotion {
 
     await renderMedia({
       codec: "h264",
+      x264Preset: "ultrafast",
       composition,
       serveUrl: this.bundled,
       outputLocation,
