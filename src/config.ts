@@ -43,6 +43,7 @@ export class Config {
   public pollinationsStylePrompt: string;
   public cloudflareAccountId?: string;
   public cloudflareApiToken?: string;
+  public cloudflareImageModel: "flux" | "sdxl";
   public logLevel: pino.Level;
   public whisperVerbose: boolean;
   public port: number;
@@ -89,6 +90,11 @@ export class Config {
       "hand-drawn 2D doodle animation style, flat colors, bold black outlines, no photorealism, simple children's illustration style";
     this.cloudflareAccountId = process.env.CLOUDFLARE_ACCOUNT_ID || undefined;
     this.cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN || undefined;
+    // "flux" (default): fast, 4 steps, no negative_prompt support.
+    // "sdxl": supports negative_prompt for real anti-artifact control,
+    // slower (20 steps default) and more neurons/image.
+    this.cloudflareImageModel =
+      (process.env.CLOUDFLARE_IMAGE_MODEL as "flux" | "sdxl") || "flux";
     this.logLevel = (process.env.LOG_LEVEL || defaultLogLevel) as pino.Level;
     this.whisperVerbose = process.env.WHISPER_VERBOSE === "true";
     this.port = process.env.PORT ? parseInt(process.env.PORT) : defaultPort;
