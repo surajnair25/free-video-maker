@@ -41,6 +41,7 @@ export class Config {
   public mediaProvider: "pexels" | "pollinations";
   public pollinationsApiKey?: string;
   public pollinationsStylePrompt: string;
+  public pollinationsEnhance: boolean;
   public logLevel: pino.Level;
   public whisperVerbose: boolean;
   public port: number;
@@ -83,6 +84,9 @@ export class Config {
     this.pollinationsStylePrompt =
       process.env.POLLINATIONS_STYLE_PROMPT ||
       "hand-drawn 2D doodle animation style, flat colors, bold black outlines, no photorealism, simple children's illustration style";
+    // Opt-in so it can be A/B tested against the default (off) — previously
+    // correlated with fast 500s from Pollinations in earlier testing.
+    this.pollinationsEnhance = process.env.POLLINATIONS_ENHANCE === "true";
     this.logLevel = (process.env.LOG_LEVEL || defaultLogLevel) as pino.Level;
     this.whisperVerbose = process.env.WHISPER_VERBOSE === "true";
     this.port = process.env.PORT ? parseInt(process.env.PORT) : defaultPort;

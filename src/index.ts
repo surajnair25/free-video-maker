@@ -46,6 +46,7 @@ async function main() {
           config.pollinationsStylePrompt,
           config.pollinationsApiKey,
           config.tempDirPath,
+          config.pollinationsEnhance,
         )
       : new PexelsAPI(config.pexelsApiKey);
   logger.debug({ provider: config.mediaProvider }, "Using media provider");

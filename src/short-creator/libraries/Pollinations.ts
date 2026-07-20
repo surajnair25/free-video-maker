@@ -81,6 +81,7 @@ export class PollinationsAPI {
     private stylePrompt: string,
     private apiKey?: string,
     private tempDirPath: string = "/tmp",
+    private enhance: boolean = false,
   ) {}
 
   // Queues callers so requests are issued strictly one at a time, each
@@ -125,13 +126,17 @@ export class PollinationsAPI {
       height: String(height),
       nologo: "true",
       seed: String(seed),
-      // NOTE: deliberately NOT setting enhance=true. Confirmed via direct
-      // testing that it causes Pollinations to return an immediate 500
-      // (not a timeout/overload — fails in <1s), independent of prompt
-      // content or rate limiting. Our own prompts are already detailed
-      // enough that the extra server-side rewrite isn't needed.
+      // enhance=true previously caused Pollinations to return an immediate
+      // 500 in earlier testing (independent of prompt content or rate
+      // limiting). Now opt-in via POLLINATIONS_ENHANCE=true so it can be
+      // A/B tested — off by default since our own prompts are already
+      // detailed enough that the extra server-side rewrite may not be
+      // needed, and it previously correlated with failures.
       negative_prompt: negativePrompt,
     });
+    if (this.enhance) {
+      params.set("enhance", "true");
+    }
     if (this.apiKey) {
       params.set("key", this.apiKey);
     }
@@ -140,11 +145,17 @@ export class PollinationsAPI {
 
   private async downloadImage(url: string, destPath: string, timeout: number): Promise<void> {
     await this.throttle();
+    const startedAt = Date.now();
     const response = await fetch(url, {
       method: "GET",
       redirect: "follow",
       signal: AbortSignal.timeout(timeout),
     });
+    const elapsedMs = Date.now() - startedAt;
+    logger.debug(
+      { enhance: this.enhance, elapsedMs, status: response.status },
+      "Pollinations image request completed",
+    );
     if (!response.ok) {
       throw new Error(`Pollinations API error: ${response.status} ${response.statusText}`);
     }
