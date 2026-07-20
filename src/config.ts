@@ -44,6 +44,7 @@ export class Config {
   public cloudflareAccountId?: string;
   public cloudflareApiToken?: string;
   public cloudflareImageModel: "flux" | "sdxl";
+  public cloudflareFluxSteps: number;
   public logLevel: pino.Level;
   public whisperVerbose: boolean;
   public port: number;
@@ -95,6 +96,12 @@ export class Config {
     // slower (20 steps default) and more neurons/image.
     this.cloudflareImageModel =
       (process.env.CLOUDFLARE_IMAGE_MODEL as "flux" | "sdxl") || "flux";
+    // Default 4 matches flux-1-schnell's documented safe range (1-4 steps).
+    // Configurable to test whether 5-8 improves anatomy consistency without
+    // a code change — untested territory for this specific hosted model.
+    this.cloudflareFluxSteps = process.env.CLOUDFLARE_FLUX_STEPS
+      ? parseInt(process.env.CLOUDFLARE_FLUX_STEPS)
+      : 4;
     this.logLevel = (process.env.LOG_LEVEL || defaultLogLevel) as pino.Level;
     this.whisperVerbose = process.env.WHISPER_VERBOSE === "true";
     this.port = process.env.PORT ? parseInt(process.env.PORT) : defaultPort;

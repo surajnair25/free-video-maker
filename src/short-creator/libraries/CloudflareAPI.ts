@@ -97,6 +97,7 @@ export class CloudflareAPI {
     private apiToken: string,
     private tempDirPath: string = "/tmp",
     modelChoice: "flux" | "sdxl" = "flux",
+    private fluxSteps: number = 4,
   ) {
     this.model = modelChoice === "sdxl" ? sdxlModel : fluxModel;
   }
@@ -106,14 +107,16 @@ export class CloudflareAPI {
   }
 
   private buildPrompt(prompt: string): string {
-    // Same style-first, constraint-appended structure as the Pollinations
-    // provider. Strengthened vs. the original version — flux-1-schnell has
-    // no negative_prompt slot, so these constraints have to work harder as
-    // plain positive-prompt instructions instead of a dedicated "avoid this"
-    // channel. Explicit anatomy/object-count language repeated here since
-    // there's nowhere else to put it for that model.
+    // flux-1-schnell has no negative_prompt slot, so these constraints have
+    // to work as plain positive instructions. Rewritten as a natural
+    // sentence rather than a stacked comma-list of fragments — Flux's own
+    // prompting guidance notes it responds better to concise natural
+    // language than to "keyword soup," which the previous longer suffix had
+    // become. Note: even with ideal prompting, schnell is a distilled model
+    // with a documented tendency toward structural errors (extra/missing
+    // limbs) — this reduces frequency, it doesn't eliminate the issue.
     return this.stylePrompt
-      ? `${this.stylePrompt}, ${prompt}, single clean composition, exactly one clear subject, natural two-armed two-legged human anatomy, correct number of fingers, exactly one of each background object, no duplicate items, no extra limbs, simple relaxed hands not in extreme close-up, no readable text or writing`
+      ? `${this.stylePrompt}. The scene shows ${prompt}. It's a single person with natural two-armed, two-legged anatomy and correct hands, alone in a simple, uncluttered setting with only one of any background object visible. No text or writing anywhere in the image.`
       : prompt;
   }
 
@@ -143,10 +146,11 @@ export class CloudflareAPI {
       // step count; cutting steps here would undercut the quality gain
       // this model is being used for in the first place.
     } else {
-      // flux-1-schnell is the fast/distilled variant — 4 steps is its
-      // intended sweet spot (higher step counts don't meaningfully
-      // improve quality on schnell and just cost more neurons).
-      body.num_steps = 4;
+      // flux-1-schnell's official range is 1-4 steps. Some community
+      // fine-tunes report 4-8 working acceptably, but this is untested for
+      // the base BFL schnell hosted here — configurable so it can be A/B'd
+      // without a code change, default stays at the documented-safe value.
+      body.num_steps = this.fluxSteps;
     }
 
     const response = await fetch(this.buildRunUrl(), {

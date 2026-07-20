@@ -55,6 +55,7 @@ async function main() {
             config.cloudflareApiToken as string,
             config.tempDirPath,
             config.cloudflareImageModel,
+            config.cloudflareFluxSteps,
           )
         : new PexelsAPI(config.pexelsApiKey);
   logger.debug({ provider: config.mediaProvider }, "Using media provider");
