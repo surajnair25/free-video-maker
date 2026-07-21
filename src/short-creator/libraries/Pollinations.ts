@@ -114,7 +114,7 @@ export class PollinationsAPI {
     // duplicate background objects (e.g. two clocks) — that remains a
     // probabilistic tendency of the free model regardless of prompting.
     const negativePrompt =
-      "duplicate objects, multiple identical items, extra limbs, multiple heads, three arms, three legs, distorted fingers, malformed hands, readable text, writing, letters, words, gibberish text, blurry, photorealistic, distorted anatomy, heavy black shading, solid black fill, cross-hatching, filled silhouette, dark shadow figure";
+      "duplicate objects, multiple identical items, extra limbs, multiple heads, three arms, three legs, individual fingers, spread fingers, five fingers, distorted fingers, malformed hands, readable text, writing, letters, words, gibberish text, blurry, photorealistic, distorted anatomy, heavy black shading, solid black fill, cross-hatching, filled silhouette, dark shadow figure";
     // image.pollinations.ai is Pollinations' longstanding no-signup, no-API-key
     // image endpoint. An optional key can be supplied for higher rate limits.
     const seed = Math.floor(Math.random() * 1_000_000);
