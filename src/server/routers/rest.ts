@@ -183,6 +183,19 @@ export class APIRouter {
           });
           return;
         }
+        // Without this, the response has no Content-Type at all — the file
+        // streams back fine over plain HTTP (curl sees a 200 OK), but
+        // Remotion's headless Chromium renderer doesn't recognize the
+        // response as playable audio without it, so the <Audio> element
+        // silently fails to play. This exact header was already present on
+        // the /tmp/:tmpFile route (used for narration/video) but was missing
+        // here — that asymmetry was the actual bug.
+        if (fileName.endsWith(".mp3")) {
+          res.setHeader("Content-Type", "audio/mpeg");
+        }
+        if (fileName.endsWith(".wav")) {
+          res.setHeader("Content-Type", "audio/wav");
+        }
         const musicFileStream = fs.createReadStream(musicFilePath);
         musicFileStream.on("error", (error) => {
           logger.error(error, "Error reading music file");
