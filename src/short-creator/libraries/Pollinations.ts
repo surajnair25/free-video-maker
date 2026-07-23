@@ -113,8 +113,12 @@ export class PollinationsAPI {
     // helps hands and garbled in-image text, but does NOT reliably prevent
     // duplicate background objects (e.g. two clocks) — that remains a
     // probabilistic tendency of the free model regardless of prompting.
+    // Updated for the single-line stick-figure redesign (was mitten-hand /
+    // torso-box style). Explicitly excludes the OLD style's own features
+    // (double-line limbs, torso box, mitten hands) since Flux can default
+    // back toward patterns it rendered most often during earlier iteration.
     const negativePrompt =
-      "duplicate objects, multiple identical items, extra limbs, multiple heads, three arms, three legs, individual fingers, spread fingers, five fingers, distorted fingers, malformed hands, readable text, writing, letters, words, gibberish text, blurry, photorealistic, distorted anatomy, heavy black shading, solid black fill, cross-hatching, filled silhouette, dark shadow figure";
+      "duplicate objects, multiple identical items, duplicate figure, multiple people, extra limbs, multiple heads, three arms, three legs, double-line limbs, thick limbs, torso box, rectangle body, shirt, clothing, mitten hands, individual fingers, spread fingers, five fingers, distorted fingers, malformed hands, toes, readable text, writing, letters, words, gibberish text, blurry, photorealistic, distorted anatomy, heavy black shading, solid black fill, cross-hatching, filled silhouette, dark shadow figure, gradient shading, messy scribbly hair";
     // image.pollinations.ai is Pollinations' longstanding no-signup, no-API-key
     // image endpoint. An optional key can be supplied for higher rate limits.
     const seed = Math.floor(Math.random() * 1_000_000);
